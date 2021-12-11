@@ -170,10 +170,11 @@ $pipinfo | sort-object -Property PIPsub | foreach {
         $v = Get-AzVnetFromSubnetID -subnetid $ag.IpConfigurations.Subnet.Id
     }
     else {
-        Write-Host "Associated resource type not found" -ForegroundColor Red
+        Write-Host "Associated resource type not found for $($_.PIPn)" -ForegroundColor Red
     }
     $vr = $vnetinfo | where { $_.VNetName -eq $v } 
     "{0},{1},{2},{3},{4},{5},{6},{7},{8}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $_.RG, $_.RName, $_.RType, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
+    $v = $null
 }
 Write-Host "Finished building report CSV file" -ForegroundColor Green
 #Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
