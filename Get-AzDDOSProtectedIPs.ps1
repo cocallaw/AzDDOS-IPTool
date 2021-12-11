@@ -148,13 +148,18 @@ $pipinfo | sort-object -Property PIPsub | foreach {
         $ni = Get-AzNetworkInterface -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
     }
-    elseif ($_.RType -eq '--Azure Bastion--') {
+    elseif ($_.RType -eq 'bastionHosts') {
         $ba = Get-AzBastion -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
     }
-    elseif ($_.RType -eq '--Azure Load Balancer--') {
+    elseif ($_.RType -eq 'loadBalancers') {
         $lb = Get-AzLoadBalancer -ResourceGroupName $_.RG -Name $_.RName
-        $v = Get-AzVnetFromSubnetID -subnetid $lb.IpConfigurations.Subnet.Id
+        try {
+            $v = Get-AzVnetFromSubnetID -subnetid $lb.IpConfigurations.Subnet.Id -ErrorAction SilentlyContinue 
+        }
+        catch {
+            $v = 'Invalid_Subnet_ID'
+        }
     }
     elseif ($_.RType -eq '--NAT Gateway--') {
         $ng = Get-AzNatGateway -ResourceGroupName $_.RG -Name $_.RName
