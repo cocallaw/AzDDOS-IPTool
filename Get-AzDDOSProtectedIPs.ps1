@@ -158,4 +158,5 @@ $pipinfo | sort-object -Property PIPsub | foreach {
     $vr = $vnetinfo | where { $_.VNetName -eq $v } 
     "{0},{1},{2},{3},{4},{5},{6},{7},{8}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $_.RG, $_.RName, $_.RType, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
 }
+Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
 #endregion main
