@@ -1,11 +1,10 @@
 #region variables
 $filepathp = ".\pipresources.json"
 $filepathv = ".\vnetresources.json"
+$filepathr = ".\Az_PIP_DDOS_Report-$(get-date -Format yyyyMMdd).csv"
 $pipinfo = @()
 $vnetinfo = @()
-
 #endregion variables
-
 #region functions
 function Get-PIPResources {
     if ($context) {
@@ -33,7 +32,6 @@ function Get-IPConfigDetails {
         [String]$pipAddr,
         [Parameter(Mandatory)]
         [String]$pipID
-
     )
     $piphtable = @{}
     $array = $ipconfigtext.Split('/') 
@@ -44,13 +42,18 @@ function Get-IPConfigDetails {
     return $objectp
 }
 function Get-VnetDetails {
-    Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
-        $vnethtable = @{}
-        $vnethtable = @{vname = $_.Name; vddos = $_.EnableDdosProtectionText; vddosp = $_.DdosProtectionPlanText }
-        $vnethtable
-        $objectv = New-Object psobject -Property $vnethtable
-        $vnetinfo += $objectv
-    }
+    param (
+        [Parameter(Mandatory)]
+        [String]$vName,
+        [Parameter(Mandatory)]
+        [String]$vDDOSe,
+        [Parameter(Mandatory)]
+        [String]$vDDOSp
+    )
+    $vnethtable = @{}
+    $vnethtable = @{VNetName = $vName; DDOSEnabled = $vDDOSe; DDOSPlan = $vDDOSp } 
+    $objectv = New-Object psobject -Property $vnethtable
+    return $objectv
 }
 function Get-AzSubFromID {
     param (
@@ -96,21 +99,21 @@ if (!$context) {
 }
 Write-Host "Context Retrieved Successfully."
 Write-Host $context.Name
-
+# Get the PIP and VNet resources from all available Azure Subscriptions
 Get-PIPResources
-Get-VnetDetails
+
+new-CSVReportFile -filepath $filepathr
+# Parse the PIP resrouces from the pipresources JSON file
 Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
     $pipinfo += Get-IPConfigDetails -ipconfigtext $_.IpConfigurationText -pipName $_.Name -pipAddr $_.IpAddress -pipID $_.Id
 }
-
+# Parse the VNet resources from the vnetresources JSON file
+Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
+    $vnetinfo += (Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $_.DdosProtectionPlanText)
+}
+# Loop through the PIP resources sorted by PIP subscription to build the report csv file
 $pipinfo | sort-object -Property PIPsub | foreach {
-    Write-Host "Resource Group: " $_.RG
-    Write-Host "Type: " $_.RType
-    Write-Host "Name: " $_.RName
-    Write-Host "PIP Name: " $_.PIPn
-    Write-Host "PIP Address: " $_.PIPa
-    Write-Host "PIP Subscription: " $_.PIPsub
-
+    # Check if the current Azure Subscription matches the PIP Subscription, if not Change the Azure Subscription
     $currentsub = (Get-AzContext).Subscription.id
     if ($_.PIPsub -ne $currentsub) {
         Write-Host "Current Subscription: " $currentsub " Changing to: " $_.PIPsub
