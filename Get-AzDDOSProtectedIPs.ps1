@@ -35,12 +35,12 @@ function Get-IPConfigDetails {
         [String]$pipID
 
     )
-    $htable = @{}
+    $piphtable = @{}
     $array = $ipconfigtext.Split('/') 
-    $indexG = 0..($array.Length -1) | where {$array[$_] -eq 'resourceGroups'}
+    $indexG = 0..($array.Length - 1) | where { $array[$_] -eq 'resourceGroups' }
     $pipID = Get-AzSubFromID -subid $pipID 
-    $htable = @{RG=$array.get($indexG+1);RType=$array[7];RName=$array[8];PIPn=$pipName;PIPa=$pipAddr;PIPsub=$pipID}
-    $object = New-Object psobject -Property $htable
+    $piphtable = @{RG = $array.get($indexG + 1); RType = $array[7]; RName = $array[8]; PIPn = $pipName; PIPa = $pipAddr; PIPsub = $pipID }
+    $object = New-Object psobject -Property $piphtable
     return $object
 }
 function Get-AzSubFromID {
@@ -76,25 +76,40 @@ Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
     $pipinfo += Get-IPConfigDetails -ipconfigtext $_.IpConfigurationText -pipName $_.Name -pipAddr $_.IpAddress -pipID $_.Id
 }
 
-foreach ($pip in $pipinfo) {
-    Write-Host "Resource Group: " $pip.RG
-    Write-Host "Type: " $pip.RType
-    Write-Host "Name: " $pip.RName
-    Write-Host "PIP Name: " $pip.PIPn
-    Write-Host "PIP Address: " $pip.PIPa
-    Write-Host "PIP Subscription: " $pip.PIPsub
+$pipinfo | sort-object -Property PIPsub | foreach {
+    Write-Host "Resource Group: " $_.RG
+    Write-Host "Type: " $_.RType
+    Write-Host "Name: " $_.RName
+    Write-Host "PIP Name: " $_.PIPn
+    Write-Host "PIP Address: " $_.PIPa
+    Write-Host "PIP Subscription: " $_.PIPsub
 
-    if ($pip.RType -eq 'azureFirewalls') {
-        $fw = Get-AzFirewall -ResourceGroupName $pip.RG -Name $pip.RName
-        $fw.IpConfigurations.Subnet.Id
+    $currentsub = (Get-AzContext).Subscription.id
+    if ($_.PIPsub -ne $currentsub) {
+        Write-Host "Current Subscription: " $currentsub " Changing to: " $_.PIPsub
+        $si = $_.PIPsub
+        Select-Azsubscription -Subscription $si
     }
-    elseif ($pip.RType -eq 'virtualNetworkGateways') {
-        $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $pip.RG -Name $pip.RName
-        $gw.IpConfigurations.Subnet.Id
+    elseif ($_.PIPsub -eq $currentsub) {
     }
-    elseif ($pip.RType -eq 'networkInterfaces') {
-        $ni = Get-AzNetworkInterface -ResourceGroupName $pip.RG -Name $pip.RName
-        $ni.IpConfigurations.Subnet.Id
+    else {
+        Write-Host "There is a subscription issue"
+    }
+
+    if ($_.RType -eq 'azureFirewalls') {
+        $fw = Get-AzFirewall -ResourceGroupName $_.RG -Name $_.RName
+        $fwv = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
+        Write-Host "VNET PIP is on: " $fwv
+    }
+    elseif ($_.RType -eq 'virtualNetworkGateways') {
+        $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $_.RG -Name $_.RName
+        $gwv = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
+        Write-Host "VNET PIP is on: " $gwv
+    }
+    elseif ($_.RType -eq 'networkInterfaces') {
+        $ni = Get-AzNetworkInterface -ResourceGroupName $_.RG -Name $_.RName
+        $niv = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+        Write-Host "VNET PIP is on: " $niv
     }
 }
 #endregion main
