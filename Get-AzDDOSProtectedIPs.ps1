@@ -37,9 +37,8 @@ function Get-IPConfigDetails {
     )
     $piphtable = @{}
     $array = $ipconfigtext.Split('/') 
-    $indexG = 0..($array.Length - 1) | where { $array[$_] -eq 'resourceGroups' }
     $pipID = Get-AzSubFromID -subid $pipID 
-    $piphtable = @{RG = $array.get($indexG + 1); RType = $array[7]; RName = $array[8]; PIPn = $pipName; PIPa = $pipAddr; PIPsub = $pipID }
+    $piphtable = @{RG = $array[4]; RType = $array[7]; RName = $array[8]; PIPn = $pipName; PIPa = $pipAddr; PIPsub = $pipID }
     $objectp = New-Object psobject -Property $piphtable
     return $objectp
 }
