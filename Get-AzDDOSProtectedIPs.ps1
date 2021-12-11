@@ -40,8 +40,17 @@ function Get-IPConfigDetails {
     $indexG = 0..($array.Length - 1) | where { $array[$_] -eq 'resourceGroups' }
     $pipID = Get-AzSubFromID -subid $pipID 
     $piphtable = @{RG = $array.get($indexG + 1); RType = $array[7]; RName = $array[8]; PIPn = $pipName; PIPa = $pipAddr; PIPsub = $pipID }
-    $object = New-Object psobject -Property $piphtable
-    return $object
+    $objectp = New-Object psobject -Property $piphtable
+    return $objectp
+}
+function Get-VnetDetails {
+    Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
+        $vnethtable = @{}
+        $vnethtable = @{vname = $_.Name; vddos = $_.EnableDdosProtectionText; vddosp = $_.DdosProtectionPlanText }
+        $vnethtable
+        $objectv = New-Object psobject -Property $vnethtable
+        $vnetinfo += $objectv
+    }
 }
 function Get-AzSubFromID {
     param (
@@ -72,6 +81,7 @@ Write-Host "Context Retrieved Successfully."
 Write-Host $context.Name
 
 Get-PIPResources
+Get-VnetDetails
 Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
     $pipinfo += Get-IPConfigDetails -ipconfigtext $_.IpConfigurationText -pipName $_.Name -pipAddr $_.IpAddress -pipID $_.Id
 }
