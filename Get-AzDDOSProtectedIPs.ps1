@@ -177,6 +177,6 @@ $pipinfo | sort-object -Property PIPsub | foreach {
     $v = $null
 }
 Write-Host "Finished building report CSV file" -ForegroundColor Green
-#Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
+Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
 Write-Host "Generated report CSV file: $($filepathr)" -ForegroundColor Green
 #endregion main
