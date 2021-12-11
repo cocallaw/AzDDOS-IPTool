@@ -67,11 +67,28 @@ function Get-AzVNetFromSubnetID {
     )
     $vnet = $subnetid.Split('/')
     return $vnet[8]
-
+}
+function New-CSVReportFile {
+    param (
+        [Parameter(Mandatory)]
+        [String]$filepath
+    )
+    New-Item $filepath -type file -force
+    Set-Content $filepath 'PIP_Name,PIP_Address,PIP_Subscription,Resource_Group,Associated_Resource,Resource_Type,VNet,DDOS_Enabled,DDOS_Plan'
+}
+function Clear-CreatedJSONFiles {
+    param (
+        [Parameter(Mandatory)]
+        [String]$filepathp,
+        [Parameter(Mandatory)]
+        [String]$filepathv
+    )
+    Remove-Item $filepathp -force
+    Remove-Item $filepathv -force
 }
 #endregion functions
-
 #region main
+# Check if the user is logged in
 $context = Get-AzContext
 if (!$context) {
     Connect-AzAccount
@@ -101,6 +118,7 @@ $pipinfo | sort-object -Property PIPsub | foreach {
         Select-Azsubscription -Subscription $si
     }
     elseif ($_.PIPsub -eq $currentsub) {
+        # Do nothing and continue on if the current subscription is the same as the PIP Subscription
     }
     else {
         Write-Host "There is a subscription issue"
@@ -137,5 +155,7 @@ $pipinfo | sort-object -Property PIPsub | foreach {
     else {
         Write-Host "Resource Type not found"
     }
+    $vr = $vnetinfo | where { $_.VNetName -eq $v } 
+    "{0},{1},{2},{3},{4},{5},{6},{7},{8}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $_.RG, $_.RName, $_.RType, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
 }
 #endregion main
