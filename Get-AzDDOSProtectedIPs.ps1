@@ -105,21 +105,37 @@ $pipinfo | sort-object -Property PIPsub | foreach {
     else {
         Write-Host "There is a subscription issue"
     }
-
+    #Filter based on resource type to perform proper get command on the azure resource for VNet information
     if ($_.RType -eq 'azureFirewalls') {
         $fw = Get-AzFirewall -ResourceGroupName $_.RG -Name $_.RName
-        $fwv = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
-        Write-Host "VNET PIP is on: " $fwv
+        $v = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
     }
     elseif ($_.RType -eq 'virtualNetworkGateways') {
         $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $_.RG -Name $_.RName
-        $gwv = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
-        Write-Host "VNET PIP is on: " $gwv
+        $v = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
     }
     elseif ($_.RType -eq 'networkInterfaces') {
         $ni = Get-AzNetworkInterface -ResourceGroupName $_.RG -Name $_.RName
-        $niv = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
-        Write-Host "VNET PIP is on: " $niv
+        $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+    }
+    elseif ($_.RType -eq '--Azure Bastion--') {
+        $ba = Get-AzBastion -ResourceGroupName $_.RG -Name $_.RName
+        $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
+    }
+    elseif ($_.RType -eq '--Azure Load Balancer--') {
+        $lb = Get-AzLoadBalancer -ResourceGroupName $_.RG -Name $_.RName
+        $v = Get-AzVnetFromSubnetID -subnetid $lb.IpConfigurations.Subnet.Id
+    }
+    elseif ($_.RType -eq '--NAT Gateway--') {
+        $ng = Get-AzNatGateway -ResourceGroupName $_.RG -Name $_.RName
+        $v = Get-AzVnetFromSubnetID -subnetid $ng.IpConfigurations.Subnet.Id
+    }
+    elseif ($_.RType -eq '--App Gateway--') {
+        $ag = Get-AzApplicationGateway -ResourceGroupName $_.RG -Name $_.RName
+        $v = Get-AzVnetFromSubnetID -subnetid $ag.IpConfigurations.Subnet.Id
+    }
+    else {
+        Write-Host "Resource Type not found"
     }
 }
 #endregion main
