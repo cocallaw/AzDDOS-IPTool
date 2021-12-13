@@ -72,13 +72,21 @@ function Get-AzVNetFromSubnetID {
     $vnet = $subnetid.Split('/')
     return $vnet[8]
 }
+function Get-AzResourceRGfromID {
+    param (
+        [Parameter(Mandatory)]
+        [String]$resourceID
+    )
+    $rrg = $resourceID.Split('/')
+    return $rrg[4]
+}
 function New-CSVReportFile {
     param (
         [Parameter(Mandatory)]
         [String]$filepath
     )
     New-Item $filepath -type file -force
-    Set-Content $filepath 'PIP_Name,PIP_Address,PIP_Subscription,Resource_Group,Associated_Resource,Resource_Type,VNet,DDOS_Enabled,DDOS_Plan'
+    Set-Content $filepath 'PIP_Name,PIP_Address,PIP_Subscription,Resource_Group,Associated_Resource,Resource_Type,Associated_Resource_RG,VNet,DDOS_Enabled,DDOS_Plan'
     Write-Host "Created $($filepathr)" -ForegroundColor Green
 }
 function Clear-CreatedJSONFiles {
@@ -136,26 +144,33 @@ $pipinfo | sort-object -Property PIPsub | foreach {
         Write-Host "There is a subscription issue"
     }
     #Filter based on resource type to perform proper get command on the azure resource for VNet information
+    $v = $null
+    $err = $null
     if ($_.RType -eq 'azureFirewalls') {
         $fw = Get-AzFirewall -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
+        $rrg = Get-AzResourceRGfromID -resourceID $fw.Id
     }
     elseif ($_.RType -eq 'virtualNetworkGateways') {
         $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
+        $rrg = Get-AzResourceRGfromID -resourceID $gw.Id
     }
     elseif ($_.RType -eq 'networkInterfaces') {
         $ni = Get-AzNetworkInterface -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+        $rrg = Get-AzResourceRGfromID -resourceID $ni.Id
     }
     elseif ($_.RType -eq 'bastionHosts') {
         $ba = Get-AzBastion -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
+        $rrg = Get-AzResourceRGfromID -resourceID $ba.Id
     }
     elseif ($_.RType -eq 'loadBalancers') {
         $lb = Get-AzLoadBalancer -ResourceGroupName $_.RG -Name $_.RName
         try {
-            $v = Get-AzVnetFromSubnetID -subnetid $lb.IpConfigurations.Subnet.Id -ErrorAction SilentlyContinue 
+            $v = Get-AzVnetFromSubnetID -subnetid $lb.IpConfigurations.Subnet.Id -ErrorAction SilentlyContinue
+            $rrg = Get-AzResourceRGfromID -resourceID $lb.Id 
         }
         catch {
             $v = 'Invalid_Subnet_ID'
@@ -167,10 +182,17 @@ $pipinfo | sort-object -Property PIPsub | foreach {
     }
     else {
         Write-Host "Associated resource type not found for $($_.PIPn)" -ForegroundColor Red
+        $err = 'Unable_To_Determine'
     }
+
     $vr = $vnetinfo | where { $_.VNetName -eq $v } 
-    "{0},{1},{2},{3},{4},{5},{6},{7},{8}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $_.RG, $_.RName, $_.RType, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
-    $v = $null
+
+    if ($err -ne $null) {
+        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $err, $err, $err, $rrg , $err, $err, $err  | add-content -path $filepathr
+    }
+    else {
+        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $_.RG, $_.RName, $_.RType, $rrg, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
+    }
 }
 Write-Host "Finished building report CSV file" -ForegroundColor Green
 Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
