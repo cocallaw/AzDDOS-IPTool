@@ -26,9 +26,19 @@ This script will generate a CSV file containing the following infomration for ea
 |---------------------|----------------------------------------------------------------------------------------------------------------------------------------|
 | PIP_Address         | Public IP Address currently assigned to the Public IP Address resource                                                                 |
 | PIP_Subscription    | Azure Subscription GUID for where the Public IP Address resource was found                                                             |
-| Resource_Group      | Name of the Azure Resource Group that contains the resource that the Public IP Address is associated with                              |
+| Resource_Group      | Name of the Azure Resource Group that contains the Public IP Address                              |
 | Associated_Resource | Name of the Azure resource that the Public IP Address is associated with                                                               |
 | Resource_Type       | Type of resource that the Public IP Address is associated with                                                                         |
+| Associated_Resource_RG       | Name of the Azure Resource Group that contains the associated resource                                                                         |
 | VNet                | Name of the Azure Virtual Network that the Public IP Address and its associated resource are connected to                              |
 | DDOS_Enabled        | True or False value if Azure DDOS is enabled on the Virtual Network the Public IP Address and its associated resource are connected to |
 | DDOS_Plan           | Name of the DDOS Plan that the Azure Virtual Network is using                                                                          |
+
+## Things To Note
+* If the associated resource can not be determenined the script will output "Associated resource type not found for sample-PIP", and the CSV file will populate the appropriate columns with "Unable_To_Determine"
+* If the associated resource is an Azure Load Balancer that is not configured with a backend, the CSV will populate the VNet column with "Invalid_Subnet_ID"
+
+## Known Issues 
+* Tthis script does have full logic for parsing External Azure Loadbalancers (12/13/2021 - Currently Testing)
+* This script does have full logic for parsing Application Gateways (12/13/2021 - Currently Testing)
+* This script has not been tested to parse Public IP Addresses that are associated with a ExpressRoute Gateway
