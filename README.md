@@ -39,6 +39,6 @@ This script will generate a CSV file containing the following infomration for ea
 * If the associated resource is an Azure Load Balancer that is not configured with a backend, the CSV will populate the VNet column with "Invalid_Subnet_ID"
 
 ## Known Issues 
-* Tthis script does have full logic for parsing External Azure Loadbalancers (12/13/2021 - Currently Testing)
+* This script does have full logic for parsing External Azure Loadbalancers (12/13/2021 - Currently Testing)
 * This script does have full logic for parsing Application Gateways (12/13/2021 - Currently Testing)
 * This script has not been tested to parse Public IP Addresses that are associated with a ExpressRoute Gateway
