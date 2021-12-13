@@ -161,10 +161,6 @@ $pipinfo | sort-object -Property PIPsub | foreach {
             $v = 'Invalid_Subnet_ID'
         }
     }
-    elseif ($_.RType -eq '--NAT Gateway--') {
-        $ng = Get-AzNatGateway -ResourceGroupName $_.RG -Name $_.RName
-        $v = Get-AzVnetFromSubnetID -subnetid $ng.IpConfigurations.Subnet.Id
-    }
     elseif ($_.RType -eq '--App Gateway--') {
         $ag = Get-AzApplicationGateway -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $ag.IpConfigurations.Subnet.Id
