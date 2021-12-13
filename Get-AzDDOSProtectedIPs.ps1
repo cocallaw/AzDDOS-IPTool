@@ -176,9 +176,10 @@ $pipinfo | sort-object -Property PIPsub | foreach {
             $v = 'Invalid_Subnet_ID'
         }
     }
-    elseif ($_.RType -eq '--App Gateway--') {
+    elseif ($_.RType -eq 'applicationGateways') {
         $ag = Get-AzApplicationGateway -ResourceGroupName $_.RG -Name $_.RName
         $v = Get-AzVnetFromSubnetID -subnetid $ag.IpConfigurations.Subnet.Id
+        $rrg = Get-AzResourceRGfromID -resourceID $ag.Id
     }
     else {
         Write-Host "Associated resource type not found for $($_.PIPn)" -ForegroundColor Red
