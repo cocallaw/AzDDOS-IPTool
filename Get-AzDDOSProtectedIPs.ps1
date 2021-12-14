@@ -42,6 +42,18 @@ function Get-IPConfigDetails {
     $objectp = New-Object psobject -Property $piphtable
     return $objectp
 }
+function Get-LBIPConfigDetails {
+    param (
+        [Parameter(Mandatory)]
+        [String]$lbnicconfigID
+    )
+    $lbhtable = @{}
+    $array = $lbnicconfigID.Split('/')
+    $lbhtable = @{RG = $array[4]; RType = $array[7]; RName = $array[8] }
+    $objectlb = New-Object psobject -Property $lbhtable
+    return $objectlb
+    
+}
 function Get-VnetDetails {
     param (
         [Parameter(Mandatory)]
@@ -129,15 +141,16 @@ Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
 Write-Host "Finished parsing Public IP and Virtual Network resources" -ForegroundColor Green
 # Loop through the PIP resources sorted by PIP subscription to build the report csv file
 Write-Host "Building report CSV file..." -ForegroundColor Yellow
-$pipinfo | sort-object -Property PIPsub | foreach {
+$pipinfo = $pipinfo | sort-object -Property PIPsub 
+foreach ($p in $pipinfo) {
     # Check if the current Azure Subscription matches the PIP Subscription, if not Change the Azure Subscription
     $currentsub = (Get-AzContext).Subscription.id
-    if ($_.PIPsub -ne $currentsub) {
-        Write-Host "Current Subscription: " $currentsub " Changing to: " $_.PIPsub
-        $si = $_.PIPsub
+    if ($p.PIPsub -ne $currentsub) {
+        Write-Host "Current Subscription: " $currentsub " Changing to: " $p.PIPsub
+        $si = $p.PIPsub
         Select-Azsubscription -Subscription $si
     }
-    elseif ($_.PIPsub -eq $currentsub) {
+    elseif ($p.PIPsub -eq $currentsub) {
         # Do nothing and continue on if the current subscription is the same as the PIP Subscription
     }
     else {
@@ -146,55 +159,58 @@ $pipinfo | sort-object -Property PIPsub | foreach {
     #Filter based on resource type to perform proper get command on the azure resource for VNet information
     $v = $null
     $err = $null
-    if ($_.RType -eq 'azureFirewalls') {
-        $fw = Get-AzFirewall -ResourceGroupName $_.RG -Name $_.RName
-        $v = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
-        $rrg = Get-AzResourceRGfromID -resourceID $fw.Id
-    }
-    elseif ($_.RType -eq 'virtualNetworkGateways') {
-        $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $_.RG -Name $_.RName
-        $v = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
-        $rrg = Get-AzResourceRGfromID -resourceID $gw.Id
-    }
-    elseif ($_.RType -eq 'networkInterfaces') {
-        $ni = Get-AzNetworkInterface -ResourceGroupName $_.RG -Name $_.RName
-        $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
-        $rrg = Get-AzResourceRGfromID -resourceID $ni.Id
-    }
-    elseif ($_.RType -eq 'bastionHosts') {
-        $ba = Get-AzBastion -ResourceGroupName $_.RG -Name $_.RName
-        $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
-        $rrg = Get-AzResourceRGfromID -resourceID $ba.Id
-    }
-    elseif ($_.RType -eq 'loadBalancers') {
-        $lb = Get-AzLoadBalancer -ResourceGroupName $_.RG -Name $_.RName
-        try {
-            $v = Get-AzVnetFromSubnetID -subnetid $lb.IpConfigurations.Subnet.Id -ErrorAction SilentlyContinue
-            $rrg = Get-AzResourceRGfromID -resourceID $lb.Id 
+    if ($p.RType -eq "azureFirewalls" -or $p.RType -eq "virtualNetworkGateways" -or $p.RType -eq "networkInterfaces" -or $p.RType -eq "bastionHosts") {
+        if ($p.RType -eq 'azureFirewalls') {
+            $fw = Get-AzFirewall -ResourceGroupName $p.RG -Name $p.RName
+            $v = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
+            $rrg = Get-AzResourceRGfromID -resourceID $fw.Id
         }
-        catch {
-            $v = 'Invalid_Subnet_ID'
+        elseif ($p.RType -eq 'virtualNetworkGateways') {
+            $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $p.RG -Name $p.RName
+            $v = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
+            $rrg = Get-AzResourceRGfromID -resourceID $gw.Id
+        }
+        elseif ($p.RType -eq 'networkInterfaces') {
+            $ni = Get-AzNetworkInterface -ResourceGroupName $p.RG -Name $p.RName
+            $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+            $rrg = Get-AzResourceRGfromID -resourceID $ni.Id
+        }
+        elseif ($p.RType -eq 'bastionHosts') {
+            $ba = Get-AzBastion -ResourceGroupName $p.RG -Name $p.RName
+            $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
+            $rrg = Get-AzResourceRGfromID -resourceID $ba.Id
+        }
+        $vr = $vnetinfo | where { $_.VNetName -eq $v } 
+        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $rrg, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
+    }
+    elseif ($p.RType -eq "applicationGateways" -or $p.RType -eq "loadBalancers") {
+        if ($p.RType -eq 'applicationGateways') {
+            $ag = Get-AzApplicationGateway -ResourceGroupName $p.RG -Name $p.RName
+            $v = Get-AzVnetFromSubnetID -subnetid $ag.IpConfigurations.Subnet.Id
+            $rrg = Get-AzResourceRGfromID -resourceID $ag.Id
+        }
+        elseif ($p.RType -eq 'loadBalancers') {
+            $lb = Get-AzLoadBalancer -ResourceGroupName $p.RG -Name $p.RName
+            $lb.BackendAddressPools | foreach {
+                $_.LoadBalancerBackendAddresses | foreach {
+                    $lbi = Get-LBIPConfigDetails -lbnicconfigID $_.NetworkInterfaceIpConfiguration.Id
+                    $ni = Get-AzNetworkInterface -ResourceGroupName $lbi.RG -Name $lbi.RName
+                    $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+                    $vr = $vnetinfo | where { $_.VNetName -eq $v }   
+                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $lbi.RName, $lbi.RType, $lbi.RG, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr 
+                }
+            }
         }
     }
-    elseif ($_.RType -eq 'applicationGateways') {
-        $ag = Get-AzApplicationGateway -ResourceGroupName $_.RG -Name $_.RName
-        $v = Get-AzVnetFromSubnetID -subnetid $ag.IpConfigurations.Subnet.Id
-        $rrg = Get-AzResourceRGfromID -resourceID $ag.Id
-    }
+    #$vr = $vnetinfo | where { $_.VNetName -eq $v } 
     else {
         Write-Host "Associated resource type not found for $($_.PIPn)" -ForegroundColor Red
         $err = 'Unable_To_Determine'
-    }
-
-    $vr = $vnetinfo | where { $_.VNetName -eq $v } 
-
-    if ($err -ne $null) {
-        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $err, $err, $err, $rrg , $err, $err, $err  | add-content -path $filepathr
-    }
-    else {
-        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $_.PIPn, $_.PIPa, $_.PIPsub, $_.RG, $_.RName, $_.RType, $rrg, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
+        $vr = $vnetinfo | where { $_.VNetName -eq $v } 
+        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $err, $err, $err, $rrg , $err, $err, $err  | add-content -path $filepathr
     }
 }
+
 Write-Host "Finished building report CSV file" -ForegroundColor Green
 Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
 Write-Host "Generated report CSV file: $($filepathr)" -ForegroundColor Green
