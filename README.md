@@ -22,8 +22,9 @@ To download a local copy of the latest version of the script run the command bel
 ## Output
 This script will generate a CSV file containing the following infomration for each Public IP Address that is visible to the user running the script 
 
-| PIP_Name            | Name of the Azure Public IP Address resource                                                                                           |
+| Column Name           | Description                                                                                           |
 |---------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| PIP_Name            | Name of the Azure Public IP Address resource   
 | PIP_Address         | Public IP Address currently assigned to the Public IP Address resource                                                                 |
 | PIP_Subscription    | Azure Subscription GUID for where the Public IP Address resource was found                                                             |
 | Resource_Group      | Name of the Azure Resource Group that contains the Public IP Address                              |
