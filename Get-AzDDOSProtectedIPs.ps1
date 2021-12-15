@@ -196,7 +196,7 @@ foreach ($p in $pipinfo) {
                 $appgwv = Get-AzVnetFromSubnetID -subnetid $appgwni.IpConfigurations.Subnet.Id
                 $rrg = Get-AzResourceRGfromID -resourceID $appgwni.Id
                 $vr = $vnetinfo | where { $_.VNetName -eq $appgwv }   
-                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $apgwi.RName, $apgwi.RType, $rrg, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
+                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $apgwi.RName, $apgwi.RType, $rrg, $appgwv, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
             }
         }          
     }
