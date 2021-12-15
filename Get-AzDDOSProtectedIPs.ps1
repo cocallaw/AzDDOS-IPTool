@@ -135,7 +135,7 @@ Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
 # Parse the VNet resources from the vnetresources JSON file
 Write-Host "Parsing Virtual Network resources..." -ForegroundColor Yellow
 Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
-    $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $_.DdosProtectionPlanText
+    $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $_.DdosProtectionPlan.Id
 }
 Write-Host "Finished parsing Public IP and Virtual Network resources" -ForegroundColor Green
 # Loop through the PIP resources sorted by PIP subscription to build the report csv file
