@@ -219,8 +219,6 @@ foreach ($p in $pipinfo) {
         "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $err, $err, $err, $rrg , $err, $err, $err  | add-content -path $filepathr
     }
 }
-
-#$vr = $vnetinfo | where { $_.VNetName -eq $v } 
 Write-Host "Finished building report CSV file" -ForegroundColor Green
 Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
 Write-Host "Generated report CSV file: $($filepathr)" -ForegroundColor Green
