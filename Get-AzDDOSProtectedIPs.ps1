@@ -42,17 +42,16 @@ function Get-IPConfigDetails {
     $objectp = New-Object psobject -Property $piphtable
     return $objectp
 }
-function Get-LBIPConfigDetails {
+function Get-ConfigDetailsFromBEID {
     param (
         [Parameter(Mandatory)]
-        [String]$lbnicconfigID
+        [String]$BEnicconfigID
     )
     $lbhtable = @{}
-    $array = $lbnicconfigID.Split('/')
+    $array = $BEnicconfigID.Split('/')
     $lbhtable = @{RG = $array[4]; RType = $array[7]; RName = $array[8] }
-    $objectlb = New-Object psobject -Property $lbhtable
-    return $objectlb
-    
+    $object = New-Object psobject -Property $lbhtable
+    return $object
 }
 function Get-VnetDetails {
     param (
@@ -183,34 +182,45 @@ foreach ($p in $pipinfo) {
         $vr = $vnetinfo | where { $_.VNetName -eq $v } 
         "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $rrg, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
     }
-    elseif ($p.RType -eq "applicationGateways" -or $p.RType -eq "loadBalancers") {
-        if ($p.RType -eq 'applicationGateways') {
-            $ag = Get-AzApplicationGateway -ResourceGroupName $p.RG -Name $p.RName
-            $v = Get-AzVnetFromSubnetID -subnetid $ag.IpConfigurations.Subnet.Id
-            $rrg = Get-AzResourceRGfromID -resourceID $ag.Id
+    elseif ($p.RType -eq "applicationGateways") {
+        $ag = Get-AzApplicationGateway -ResourceGroupName $p.RG -Name $p.RName
+        if ($ag.BackendAddressPools.BackendAddresses.Count -gt 0) {
+            $ag.BackendAddressPools.BackendAddresses | foreach {
+                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $_.IpAddress, "Manual IP", "N/A", "N/A"  | add-content -path $filepathr
+            }
         }
-        elseif ($p.RType -eq 'loadBalancers') {
-            $lb = Get-AzLoadBalancer -ResourceGroupName $p.RG -Name $p.RName
-            $lb.BackendAddressPools | foreach {
-                $_.LoadBalancerBackendAddresses | foreach {
-                    $lbi = Get-LBIPConfigDetails -lbnicconfigID $_.NetworkInterfaceIpConfiguration.Id
-                    $ni = Get-AzNetworkInterface -ResourceGroupName $lbi.RG -Name $lbi.RName
-                    $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
-                    $vr = $vnetinfo | where { $_.VNetName -eq $v }   
-                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $lbi.RName, $lbi.RType, $lbi.RG, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr 
-                }
+        if ($ag.BackendAddressPools.BackendIpConfigurations.Count -gt 0) {
+            $ag.BackendAddressPools.BackendIpConfigurations | foreach {
+                $apgwi = Get-ConfigDetailsFromBEID -BEnicconfigID $_.Id
+                $appgwni = Get-AzNetworkInterface -ResourceGroupName $apgwi.RG -Name $apgwi.RName
+                $appgwv = Get-AzVnetFromSubnetID -subnetid $appgwni.IpConfigurations.Subnet.Id
+                $rrg = Get-AzResourceRGfromID -resourceID $appgwni.Id
+                $vr = $vnetinfo | where { $_.VNetName -eq $appgwv }   
+                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $apgwi.RName, $apgwi.RType, $rrg, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
+            }
+        }          
+    }
+    elseif ($p.RType -eq "loadBalancers") {
+        $lb = Get-AzLoadBalancer -ResourceGroupName $p.RG -Name $p.RName
+        $lb.BackendAddressPools | foreach {
+            $_.LoadBalancerBackendAddresses | foreach {
+                $lbi = Get-ConfigDetailsFromBEID -BEnicconfigID $_.NetworkInterfaceIpConfiguration.Id
+                $ni = Get-AzNetworkInterface -ResourceGroupName $lbi.RG -Name $lbi.RName
+                $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+                $vr = $vnetinfo | where { $_.VNetName -eq $v }   
+                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $lbi.RName, $lbi.RType, $lbi.RG, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr 
             }
         }
     }
-    #$vr = $vnetinfo | where { $_.VNetName -eq $v } 
     else {
-        Write-Host "Associated resource type not found for $($_.PIPn)" -ForegroundColor Red
+        Write-Host "Associated resource type not found for $($p.PIPn)" -ForegroundColor Red
         $err = 'Unable_To_Determine'
         $vr = $vnetinfo | where { $_.VNetName -eq $v } 
         "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $err, $err, $err, $rrg , $err, $err, $err  | add-content -path $filepathr
     }
 }
 
+#$vr = $vnetinfo | where { $_.VNetName -eq $v } 
 Write-Host "Finished building report CSV file" -ForegroundColor Green
 Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
 Write-Host "Generated report CSV file: $($filepathr)" -ForegroundColor Green
