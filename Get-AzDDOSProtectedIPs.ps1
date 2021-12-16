@@ -86,6 +86,14 @@ function Get-AzVNetFromSubnetID {
     $vnet = $subnetid.Split('/')
     return $vnet[8]
 }
+function Get-AzVNetRGFromSubnetID {
+    param (
+        [Parameter(Mandatory)]
+        [String]$subnetid
+    )
+    $urgv = $subnetid.Split('/')
+    return $urgv[4]
+}
 function Get-AzResourceRGfromID {
     param (
         [Parameter(Mandatory)]
@@ -175,27 +183,30 @@ foreach ($p in $pipinfo) {
         if ($p.RType -eq 'azureFirewalls') {
             $fw = Get-AzFirewall -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
+            $vurg = Get-AzVNetRGFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
             $rrg = Get-AzResourceRGfromID -resourceID $fw.Id
         }
         elseif ($p.RType -eq 'virtualNetworkGateways') {
             $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
+            $vurg = Get-AzVNetRGFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
             $rrg = Get-AzResourceRGfromID -resourceID $gw.Id
         }
         elseif ($p.RType -eq 'networkInterfaces') {
             $ni = Get-AzNetworkInterface -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+            $vurg = Get-AzVNetRGFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
             $rrg = Get-AzResourceRGfromID -resourceID $ni.Id
         }
         elseif ($p.RType -eq 'bastionHosts') {
             $ba = Get-AzBastion -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
+            $vurg = Get-AzVNetRGFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
             $rrg = Get-AzResourceRGfromID -resourceID $ba.Id
         }
-        Get-AzVirtualNetwork -ResourceGroupName $v -Name $v
         #$vr = $vnetinfo | where { $_.VNetName -eq $v } 
-        $vr = Get-AzVirtualNetwork -ResourceGroupName $_.uRG -Name $_.VNetName
-        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $rrg, $v, $vr.EnableDdosProtection, $vr.DdosProtectionPlan  | add-content -path $filepathr
+        $vr = Get-AzVirtualNetwork -ResourceGroupName $vurg -Name $v
+        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $rrg, $v, $vr.EnableDdosProtection, $vr.DdosProtectionPlan.Id  | add-content -path $filepathr
     }
     elseif ($p.RType -eq "applicationGateways") {
         $ag = Get-AzApplicationGateway -ResourceGroupName $p.RG -Name $p.RName
