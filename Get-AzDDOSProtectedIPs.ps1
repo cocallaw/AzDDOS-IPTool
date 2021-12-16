@@ -145,7 +145,7 @@ Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
 # Parse the VNet resources from the vnetresources JSON file
 Write-Host "Parsing Virtual Network resources..." -ForegroundColor Yellow
 Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
-    if ($_.DdosProtectionPlan.Id -ne $null) { $dplan = Get-AzDDOSProtectionPlan -ddosplanID $_.DdosProtectionPlan.Id } else { $dplan = "Not Enabled" }
+    if ($_.DdosProtectionPlan.Id -ne $null) { $dplan = Get-AzDDOSProtectPlan -ddosplanID $_.DdosProtectionPlan.Id } else { $dplan = "Not Enabled" }
     $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $dplan
 }
 Write-Host "Finished parsing Public IP and Virtual Network resources" -ForegroundColor Green
