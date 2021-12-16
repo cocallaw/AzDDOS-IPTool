@@ -61,10 +61,12 @@ function Get-VnetDetails {
         [Parameter(Mandatory)]
         [String]$vDDOSe,
         [Parameter(Mandatory)]
-        [String]$vDDOSp
+        [String]$vDDOSp,
+        [Parameter(Mandatory)]
+        [String]$uRG
     )
     $vnethtable = @{}
-    $vnethtable = @{VNetName = $vName; DDOSEnabled = $vDDOSe; DDOSPlan = $vDDOSp } 
+    $vnethtable = @{VNetName = $vName; DDOSEnabled = $vDDOSe; DDOSPlan = $vDDOSp; uRG = $uRG } 
     $objectv = New-Object psobject -Property $vnethtable
     return $objectv
 }
@@ -146,7 +148,7 @@ Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
 Write-Host "Parsing Virtual Network resources..." -ForegroundColor Yellow
 Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
     if ($_.DdosProtectionPlan.Id -ne $null) { $dplan = Get-AzDDOSProtectPlan -ddosplanID $_.DdosProtectionPlan.Id } else { $dplan = "Not Enabled" }
-    $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $dplan
+    $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $dplan -uRG $_.ResourceGroupName
 }
 Write-Host "Finished parsing Public IP and Virtual Network resources" -ForegroundColor Green
 # Loop through the PIP resources sorted by PIP subscription to build the report csv file
@@ -190,8 +192,10 @@ foreach ($p in $pipinfo) {
             $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
             $rrg = Get-AzResourceRGfromID -resourceID $ba.Id
         }
-        $vr = $vnetinfo | where { $_.VNetName -eq $v } 
-        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $rrg, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
+        Get-AzVirtualNetwork -ResourceGroupName $v -Name $v
+        #$vr = $vnetinfo | where { $_.VNetName -eq $v } 
+        $vr = Get-AzVirtualNetwork -ResourceGroupName $_.uRG -Name $_.VNetName
+        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $rrg, $v, $vr.EnableDdosProtection, $vr.DdosProtectionPlan  | add-content -path $filepathr
     }
     elseif ($p.RType -eq "applicationGateways") {
         $ag = Get-AzApplicationGateway -ResourceGroupName $p.RG -Name $p.RName
