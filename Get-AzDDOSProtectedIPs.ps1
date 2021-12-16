@@ -197,7 +197,8 @@ foreach ($p in $pipinfo) {
         $ag = Get-AzApplicationGateway -ResourceGroupName $p.RG -Name $p.RName
         if ($ag.BackendAddressPools.BackendAddresses.Count -gt 0) {
             $ag.BackendAddressPools.BackendAddresses | foreach {
-                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $_.IpAddress, "Manual IP", "N/A", "N/A"  | add-content -path $filepathr
+                if ($_.IpAddress -eq $null) { $IPA = "Non VNet Resource" } else { $IPA = $_.IpAddress }
+                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $p.RName, $p.RType, $IPA, "Manual IP", "N/A", "N/A"  | add-content -path $filepathr
             }
         }
         if ($ag.BackendAddressPools.BackendIpConfigurations.Count -gt 0) {
