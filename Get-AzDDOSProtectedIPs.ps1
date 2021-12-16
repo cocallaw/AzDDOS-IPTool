@@ -5,6 +5,7 @@ $filepathr = ".\Az_PIP_DDOS_Report-$(get-date -Format yyyyMMdd).csv"
 $pipinfo = @()
 $vnetinfo = @()
 #endregion variables
+#-----------------------------------------------------------------------------------------------------------------------
 #region functions
 function Get-PIPResources {
     if ($context) {
@@ -91,6 +92,14 @@ function Get-AzResourceRGfromID {
     $rrg = $resourceID.Split('/')
     return $rrg[4]
 }
+function Get-AzDDOSProtectPlan {
+    param (
+        [Parameter(Mandatory)]
+        [String]$ddosplanID
+    )
+    $ddosplan = $ddosplanID.Split('/')
+    return $ddosplan[8]
+}
 function New-CSVReportFile {
     param (
         [Parameter(Mandatory)]
@@ -113,6 +122,7 @@ function Clear-CreatedJSONFiles {
     Write-Host "Removed JSON files $($filepathp) and $($filepathv)" -ForegroundColor Green
 }
 #endregion functions
+#--------------------------------------------------------------------------------------------
 #region main
 # Check if the user is logged in
 Write-Host "Checking if there is an active Azure Context..." -ForegroundColor Yellow
@@ -135,7 +145,8 @@ Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
 # Parse the VNet resources from the vnetresources JSON file
 Write-Host "Parsing Virtual Network resources..." -ForegroundColor Yellow
 Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
-    $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $_.DdosProtectionPlan.Id
+    if ($_.DdosProtectionPlan.Id -ne $null) { $dplan = Get-AzDDOSProtectionPlan -ddosplanID $_.DdosProtectionPlan.Id } else { $dplan = "Not Enabled" }
+    $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $dplan
 }
 Write-Host "Finished parsing Public IP and Virtual Network resources" -ForegroundColor Green
 # Loop through the PIP resources sorted by PIP subscription to build the report csv file
