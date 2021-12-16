@@ -213,14 +213,12 @@ foreach ($p in $pipinfo) {
     }
     elseif ($p.RType -eq "loadBalancers") {
         $lb = Get-AzLoadBalancer -ResourceGroupName $p.RG -Name $p.RName
-        $lb.BackendAddressPools | foreach {
-            $_.LoadBalancerBackendAddresses | foreach {
-                $lbi = Get-ConfigDetailsFromBEID -BEnicconfigID $_.NetworkInterfaceIpConfiguration.Id
-                $ni = Get-AzNetworkInterface -ResourceGroupName $lbi.RG -Name $lbi.RName
-                $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
-                $vr = $vnetinfo | where { $_.VNetName -eq $v }   
-                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $lbi.RName, $lbi.RType, $lbi.RG, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr 
-            }
+        $lb.BackendAddressPools.BackendIpConfigurations | foreach {
+            $lbi = Get-ConfigDetailsFromBEID -BEnicconfigID $_.Id
+            $ni = Get-AzNetworkInterface -ResourceGroupName $lbi.RG -Name $lbi.RName
+            $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
+            $vr = $vnetinfo | where { $_.VNetName -eq $v }   
+            "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $lbi.RName, $lbi.RType, $lbi.RG, $v, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr 
         }
     }
     else {
