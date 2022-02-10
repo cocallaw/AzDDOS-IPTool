@@ -11,7 +11,7 @@ function Get-PIPResources {
     if ($context) {
         $pipResource = @()
         $allSub = Get-AzSubscription
-        Write-Host "Collecting information on Publiic IP and Virtual Network resources for all subscriptions..." -ForegroundColor Yellow
+        Write-Host -ForegroundColor Yellow "Collecting information on Publiic IP and Virtual Network resources for all subscriptions..."
         $allSub | foreach {
             Set-AzContext -SubscriptionId $_.Id
             $pipResource += Get-AzPublicIpAddress
@@ -19,10 +19,10 @@ function Get-PIPResources {
         }
         $pipResource | ConvertTo-Json | Out-File pipresources.json
         $vnetResource | ConvertTo-Json | Out-File vnetresources.json
-        Write-Host "Finished collecting Public IP and Virtual Network information" -ForegroundColor Green
+        Write-Host -ForegroundColor Green "Finished collecting Public IP and Virtual Network information" 
     }
     else {
-        Write-Host "Please Login first in order to continue" -ForegroundColor Red
+        Write-Host -ForegroundColor Red "Please Login first in order to continue" 
     }
 }
 function Get-IPConfigDetails {
@@ -117,7 +117,7 @@ function New-CSVReportFile {
     )
     New-Item $filepath -type file -force
     Set-Content $filepath 'PIP_Name,PIP_Address,PIP_Subscription,Resource_Group,Associated_Resource,Resource_Type,Associated_Resource_RG,VNet,DDOS_Enabled,DDOS_Plan'
-    Write-Host "Created $($filepathr)" -ForegroundColor Green
+    Write-Host -ForegroundColor Green "Created $($filepathr)" 
 }
 function Clear-CreatedJSONFiles {
     param (
@@ -126,41 +126,41 @@ function Clear-CreatedJSONFiles {
         [Parameter(Mandatory)]
         [String]$filepathv
     )
-    Write-Host "Removing created JSON files..." -ForegroundColor Yellow
+    Write-Host -ForegroundColor Yellow "Removing created JSON files..." 
     Remove-Item $filepathp -force
     Remove-Item $filepathv -force
-    Write-Host "Removed JSON files $($filepathp) and $($filepathv)" -ForegroundColor Green
+    Write-Host -ForegroundColor Green "Removed JSON files $($filepathp) and $($filepathv)" 
 }
 #endregion functions
 #--------------------------------------------------------------------------------------------
 #region main
 # Check if the user is logged in
-Write-Host "Checking if there is an active Azure Context..." -ForegroundColor Yellow
+Write-Host -ForegroundColor Yellow "Checking if there is an active Azure Context..." 
 $context = Get-AzContext
 if (!$context) {
     Connect-AzAccount
     $context = Get-AzContext
 }
-Write-Host "Context Retrieved Successfully." -ForegroundColor Green
+Write-Host -ForegroundColor Green "Context Retrieved Successfully." 
 Write-Host $context.Name
 # Get the PIP and VNet resources from all available Azure Subscriptions
 Get-PIPResources
 
 New-CSVReportFile -filepath $filepathr
 # Parse the PIP resrouces from the pipresources JSON file
-Write-Host "Parsing Public IP resources..." -ForegroundColor Yellow
+Write-Host -ForegroundColor Yellow "Parsing Public IP resources..." 
 Get-Content -Path $filepathp | ConvertFrom-Json | foreach {
     $pipinfo += Get-IPConfigDetails -ipconfigtext $_.IpConfigurationText -pipName $_.Name -pipAddr $_.IpAddress -pipID $_.Id
 }
 # Parse the VNet resources from the vnetresources JSON file
-Write-Host "Parsing Virtual Network resources..." -ForegroundColor Yellow
+Write-Host -ForegroundColor Yellow "Parsing Virtual Network resources..." 
 Get-Content -Path $filepathv | ConvertFrom-Json | foreach {
     if ($_.DdosProtectionPlan.Id -ne $null) { $dplan = Get-AzDDOSProtectPlan -ddosplanID $_.DdosProtectionPlan.Id } else { $dplan = "Not Enabled" }
     $vnetinfo += Get-VnetDetails -vName $_.Name -vDDOSe $_.EnableDdosProtectionText -vDDOSp $dplan -uRG $_.ResourceGroupName
 }
-Write-Host "Finished parsing Public IP and Virtual Network resources" -ForegroundColor Green
+Write-Host -ForegroundColor Green "Finished parsing Public IP and Virtual Network resources" 
 # Loop through the PIP resources sorted by PIP subscription to build the report csv file
-Write-Host "Building report CSV file..." -ForegroundColor Yellow
+Write-Host -ForegroundColor Yellow "Building report CSV file..." 
 $pipinfo = $pipinfo | sort-object -Property PIPsub 
 foreach ($p in $pipinfo) {
     # Check if the current Azure Subscription matches the PIP Subscription, if not Change the Azure Subscription
@@ -238,13 +238,13 @@ foreach ($p in $pipinfo) {
         }
     }
     else {
-        Write-Host "Associated resource type not found for $($p.PIPn)" -ForegroundColor Red
+        Write-Host -ForegroundColor Red "Associated resource type not found for $($p.PIPn)" 
         $err = 'Unable_To_Determine'
         $vr = $vnetinfo | where { $_.VNetName -eq $v } 
         "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $err, $err, $err, $rrg , $err, $err, $err  | add-content -path $filepathr
     }
 }
-Write-Host "Finished building report CSV file" -ForegroundColor Green
+Write-Host -ForegroundColor Green "Finished building report CSV file" 
 Clear-CreatedJSONFiles -filepathp $filepathp -filepathv $filepathv
-Write-Host "Generated report CSV file: $($filepathr)" -ForegroundColor Green
+Write-Host -ForegroundColor Green "Generated report CSV file: $($filepathr)" 
 #endregion main
