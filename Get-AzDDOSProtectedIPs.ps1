@@ -10,6 +10,7 @@ $vnetinfo = @()
 function Get-PIPResources {
     if ($context) {
         $pipResource = @()
+        $vnetResource = @()
         $allSub = Get-AzSubscription
         Write-Host -ForegroundColor Yellow "Collecting information on Publiic IP and Virtual Network resources for all subscriptions..."
         $allSub | foreach {
