@@ -38,7 +38,7 @@ function Get-IPConfigDetails {
     )
     $piphtable = @{}
     $array = $ipconfigtext.Split('/') 
-    $pipID = Get-AzSubFromID -subid $pipID 
+    $pipID = Split-StringandReturn -stringinput $pipID -returnpart 2 # Get Azure Subscription ID from the PIP ID | Position 2 in ID String
     $piphtable = @{RG = $array[4]; RType = $array[7]; RName = $array[8]; PIPn = $pipName; PIPa = $pipAddr; PIPsub = $pipID }
     $objectp = New-Object psobject -Property $piphtable
     return $objectp
@@ -70,13 +70,15 @@ function Get-VnetDetails {
     $objectv = New-Object psobject -Property $vnethtable
     return $objectv
 }
-function Get-AzSubFromID {
-    param (
+function Split-StringandReturn {
+    param(
         [Parameter(Mandatory)]
-        [String]$subid
+        [String]$stringinput,
+        [Parameter(Mandatory)]
+        [Int]$returnpart
     )
-    $sub = $subid.Split('/')
-    return $sub[2]
+    $s = $stringinput.Split('/')
+    return $s[$returnpart]
 }
 function Get-AzVNetFromSubnetID {
     param (
@@ -85,22 +87,6 @@ function Get-AzVNetFromSubnetID {
     )
     $vnet = $subnetid.Split('/')
     return $vnet[8]
-}
-function Get-AzVNetRGFromSubnetID {
-    param (
-        [Parameter(Mandatory)]
-        [String]$subnetid
-    )
-    $urgv = $subnetid.Split('/')
-    return $urgv[4]
-}
-function Get-AzResourceRGfromID {
-    param (
-        [Parameter(Mandatory)]
-        [String]$resourceID
-    )
-    $rrg = $resourceID.Split('/')
-    return $rrg[4]
 }
 function Get-AzDDOSProtectPlan {
     param (
@@ -183,26 +169,26 @@ foreach ($p in $pipinfo) {
         if ($p.RType -eq 'azureFirewalls') {
             $fw = Get-AzFirewall -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
-            $vurg = Get-AzVNetRGFromSubnetID -subnetid $fw.IpConfigurations.Subnet.Id
-            $rrg = Get-AzResourceRGfromID -resourceID $fw.Id
+            $vurg = Split-StringandReturn -stringinput $fw.IpConfigurations.Subnet.Id -returnpart 4 # Get Vnet RG from the Subnet ID | Position 4 in Subnet ID String
+            $rrg = Split-StringandReturn -stringinput $fw.Id -returnpart 4 # Get Resource RG from the Firewall ID | Position 4 in Firewall ID String
         }
         elseif ($p.RType -eq 'virtualNetworkGateways') {
             $gw = Get-AzVirtualNetworkGateway -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
-            $vurg = Get-AzVNetRGFromSubnetID -subnetid $gw.IpConfigurations.Subnet.Id
-            $rrg = Get-AzResourceRGfromID -resourceID $gw.Id
+            $vurg = Split-StringandReturn -stringinput $gw.IpConfigurations.Subnet.Id -returnpart 4 # Get Vnet RG from the Subnet ID | Position 4 in Subnet ID String
+            $rrg = Split-StringandReturn -stringinput $gw.Id -returnpart 4 # Get Resource RG from the Gateway ID | Position 4 in Firewall ID String
         }
         elseif ($p.RType -eq 'networkInterfaces') {
             $ni = Get-AzNetworkInterface -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
-            $vurg = Get-AzVNetRGFromSubnetID -subnetid $ni.IpConfigurations.Subnet.Id
-            $rrg = Get-AzResourceRGfromID -resourceID $ni.Id
+            $vurg = Split-StringandReturn -stringinput $ni.IpConfigurations.Subnet.Id -returnpart 4 # Get Vnet RG from the Subnet ID | Position 4 in Subnet ID String
+            $rrg = Split-StringandReturn -stringinput $ni.Id -returnpart 4 # Get Resource RG from the Network Interface ID | Position 4 in Network Interface ID String
         }
         elseif ($p.RType -eq 'bastionHosts') {
             $ba = Get-AzBastion -ResourceGroupName $p.RG -Name $p.RName
             $v = Get-AzVnetFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
-            $vurg = Get-AzVNetRGFromSubnetID -subnetid $ba.IpConfigurations.Subnet.Id
-            $rrg = Get-AzResourceRGfromID -resourceID $ba.Id
+            $vurg = Split-StringandReturn -stringinput $ba.IpConfigurations.Subnet.Id -returnpart 4 # Get Vnet RG from the Subnet ID | Position 4 in Subnet ID String
+            $rrg = Split-StringandReturn -stringinput $ba.Id -returnpart 4 # Get Resource RG from the Bastion ID | Position 4 in Bastion ID String
         }
         #$vr = $vnetinfo | where { $_.VNetName -eq $v } 
         $vr = Get-AzVirtualNetwork -ResourceGroupName $vurg -Name $v
@@ -221,7 +207,7 @@ foreach ($p in $pipinfo) {
                 $apgwi = Get-ConfigDetailsFromBEID -BEnicconfigID $_.Id
                 $appgwni = Get-AzNetworkInterface -ResourceGroupName $apgwi.RG -Name $apgwi.RName
                 $appgwv = Get-AzVnetFromSubnetID -subnetid $appgwni.IpConfigurations.Subnet.Id
-                $rrg = Get-AzResourceRGfromID -resourceID $appgwni.Id
+                $rrg = Split-StringandReturn -stringinput $appgwni.Id -returnpart 4 # Get Resource RG from the Network Interface ID | Position 4 in Network Interface ID String
                 $vr = $vnetinfo | where { $_.VNetName -eq $appgwv }   
                 "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}" -f $p.PIPn, $p.PIPa, $p.PIPsub, $p.RG, $apgwi.RName, $apgwi.RType, $rrg, $appgwv, $vr.DDOSEnabled, $vr.DDOSPlan  | add-content -path $filepathr
             }
